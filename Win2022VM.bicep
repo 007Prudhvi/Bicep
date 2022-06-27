@@ -1,0 +1,145 @@
+param adminUserName string = 'Phaneendra'
+
+@secure()
+param adminPassword string
+
+param dnsLabelPrefix string
+
+@allowed([
+  '2008-R2-SP1'
+  '2012-Datacenter'
+  '2012-R2-Datacenter'
+  '2016-Nano-Server'
+  '2016-Datacenter-with-Containers'
+  '2016-Datacenter'
+  '2019-Datacenter'
+  '20h2-pro'
+  '2022-datacenter-smalldisk'
+])
+@description('The Windows version for the VM. This will pick a fully patched image of this given Windows version.')
+param windowsOSVersion string = '2022-datacenter-smalldisk'
+
+@description('Size of the virtual machine.')
+param vmSize string = 'Standard_D2_v3'
+
+@description('location for all resources')
+param location string = resourceGroup().location
+
+var vmName = 'AZWINVM002'
+var storageAccountName = 'phanibicepsa'
+var nicName = '${vmName}-NIC'
+var subnetName = 'SNet'
+var publicIPAddressName = '${vmName}-PIP'
+var virtualNetworkName = 'VNet'
+var subnetRef = '${vn.id}/subnets/${subnetName}'
+var networkSecurityGroupName = '${vmName}-NSG'
+
+resource stg 'Microsoft.Storage/storageAccounts@2019-06-01' existing = {
+  name: storageAccountName
+}
+
+resource pip 'Microsoft.Network/publicIPAddresses@2020-06-01' = {
+  name: publicIPAddressName
+  location: location
+  properties: {
+    publicIPAllocationMethod: 'Dynamic'
+    dnsSettings: {
+      domainNameLabel: dnsLabelPrefix
+    }
+  }
+}
+
+resource sg 'Microsoft.Network/networkSecurityGroups@2020-06-01' = {
+  name: networkSecurityGroupName
+  location: location
+  properties: {
+    securityRules: [
+      {
+        name: 'Allow-3389'
+        'properties': {
+          priority: 1000
+          access: 'Allow'
+          direction: 'Inbound'
+          destinationPortRange: '3389'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+        }
+      }
+    ]
+  }
+}
+
+resource vn 'Microsoft.Network/virtualNetworks@2020-06-01' existing = {
+  name: virtualNetworkName
+
+  resource sn 'subnets' existing = {
+    name: subnetName
+  }
+}
+
+resource nInter 'Microsoft.Network/networkInterfaces@2020-06-01' = {
+  name: nicName
+  location: location
+
+  properties: {
+    ipConfigurations: [
+      {
+        name: 'IPCONFIG-1'
+        properties: {
+          privateIPAllocationMethod: 'Dynamic'
+          publicIPAddress: {
+            id: pip.id
+          }
+          subnet: {
+            id: subnetRef
+          }
+        }
+      }
+    ]
+  }
+}
+
+resource VM 'Microsoft.Compute/virtualMachines@2020-06-01' = {
+  name: vmName
+  location: location
+  properties: {
+    hardwareProfile: {
+      vmSize: vmSize
+    }
+    osProfile: {
+      computerName: vmName
+      adminUsername: adminUserName
+      adminPassword: adminPassword
+    }
+    storageProfile: {
+      imageReference: {
+        publisher: 'MicrosoftWindowsServer'
+        offer: 'WindowsServer'
+        sku: windowsOSVersion
+        version: 'latest'
+      }
+      osDisk: {
+        createOption: 'FromImage'
+        name: '${vmName}-OSDisk'
+      }
+      dataDisks: []
+    }
+    networkProfile: {
+      networkInterfaces: [
+        {
+          id: nInter.id
+        }
+      ]
+    }
+    diagnosticsProfile: {
+      bootDiagnostics: {
+        enabled: true
+        storageUri: stg.properties.primaryEndpoints.blob
+      }
+    }
+  }
+}
+
+output hostname string = pip.properties.dnsSettings.fqdn
