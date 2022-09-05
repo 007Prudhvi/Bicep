@@ -1,3 +1,6 @@
+@description('Specifies the location for resources.')
+param location2 string = 'eastus'
+
 param location string = resourceGroup().location
 
 @allowed([
@@ -35,7 +38,7 @@ var storageAccountName = 'toywebsite${uniqueString(resourceGroup().id)}'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   name: storageAccountName
-  location: 'eastus'
+  location: location2
   sku: {
     name: 'Standard_LRS'
   }

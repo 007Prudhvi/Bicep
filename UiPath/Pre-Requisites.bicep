@@ -1,9 +1,10 @@
 targetScope = 'subscription'
 
-param resourcegroupname string = 'BICEP-DEV'
-param resourcegrouplocation string = 'eastus'
+param resourcegroupname string = 'FMM-FMS-UiPath-RG'
+
+param resourcegrouplocation string = 'EastUS'
 
 resource RG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: resourcegroupname
   location: resourcegrouplocation
+  name: resourcegroupname
 }

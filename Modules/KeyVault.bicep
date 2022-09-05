@@ -1,5 +1,8 @@
+@description('Specifies the location for resources.')
+param location string = 'EastUS'
+
 resource KV 'Microsoft.KeyVault/vaults@2019-09-01' = {
-  location: 'EastUS'
+  location: location
   name: 'myKVDemoBicep'
   properties: {
     tenantId: subscription().tenantId
